@@ -7,6 +7,13 @@ app.use(cors());
 app.use(express.json());
 
 /**
+ * HEALTH CHECK – za Render / UptimeRobot
+ */
+app.get("/", (req, res) => {
+  res.status(200).send("OK");
+});
+
+/**
  * NOTIFIKACIJA ADMINU – NOVA PORUDŽBINA
  * očekuje:
  * {
