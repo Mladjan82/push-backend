@@ -39,23 +39,61 @@ app.post("/notify-admin", async (req, res) => {
   try {
     const response = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(message),
     });
 
     const data = await response.json();
-    console.log("Expo response:", data);
+    console.log("Admin push response:", data);
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error("Expo push error:", error);
+    console.error("Expo push error (admin):", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ⬇⬇⬇ JEDINA OBAVEZNA IZMENA ZA DEPLOY ⬇⬇⬇
+/**
+ * NOTIFIKACIJA KORISNIKU – PROMENA STATUSA
+ * očekuje:
+ * {
+ *   token: "ExponentPushToken[...]",
+ *   orderId: "abc123",
+ *   status: "u pripremi"
+ * }
+ */
+app.post("/notify-user", async (req, res) => {
+  const { token, orderId, status } = req.body;
+
+  if (!token || !orderId || !status) {
+    return res.status(400).json({ error: "Missing token, orderId or status" });
+  }
+
+  const message = {
+    to: token,
+    sound: "default",
+    title: "📣 Status porudžbine",
+    body: `Porudžbina #${orderId.slice(-6)} je sada: ${status}`,
+  };
+
+  try {
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message),
+    });
+
+    const data = await response.json();
+    console.log("User push response:", data);
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Expo push error (user):", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ⬇⬇⬇ DEPLOY READY ⬇⬇⬇
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Push backend running on port ${PORT}`);
