@@ -151,6 +151,7 @@ app.post("/create-order", async (req, res) => {
       return res.status(400).json({ error: "Invalid order data" });
     }
 
+    // 1️⃣ Upis porudžbine
     const docRef = await admin
       .firestore()
       .collection("orders")
@@ -160,13 +161,29 @@ app.post("/create-order", async (req, res) => {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+    // 2️⃣ Uzimanje admin push tokena
+    const adminDoc = await admin.firestore().doc("settings/Admin").get();
+    const adminToken = adminDoc.data()?.pushToken;
+
+    // 3️⃣ Slanje notifikacije adminu
+    if (adminToken) {
+      await fetch("https://notification.bombo.rs/notify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: adminToken,
+          orderId: docRef.id,
+          total: orderData.total,
+        }),
+      });
+    }
+
     res.json({ success: true, orderId: docRef.id });
   } catch (error) {
     console.error("❌ CREATE ORDER ERROR:", error);
     res.status(500).json({ error: "Order creation failed" });
   }
 });
-
 
 /**
  * ============================
