@@ -1,10 +1,19 @@
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
+const admin = require("firebase-admin");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+/**
+ * FIREBASE ADMIN INIT
+ * koristi Application Default Credentials (Render env)
+ */
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+});
 
 /**
  * HEALTH CHECK – za Render / UptimeRobot
@@ -14,13 +23,9 @@ app.get("/", (req, res) => {
 });
 
 /**
+ * ============================
  * NOTIFIKACIJA ADMINU – NOVA PORUDŽBINA
- * očekuje:
- * {
- *   token: "ExponentPushToken[...]",
- *   orderId: "abc123",
- *   total: 1250
- * }
+ * ============================
  */
 app.post("/notify-admin", async (req, res) => {
   const { token, orderId, total } = req.body;
@@ -54,13 +59,9 @@ app.post("/notify-admin", async (req, res) => {
 });
 
 /**
+ * ============================
  * NOTIFIKACIJA KORISNIKU – PROMENA STATUSA
- * očekuje:
- * {
- *   token: "ExponentPushToken[...]",
- *   orderId: "abc123",
- *   status: "u pripremi"
- * }
+ * ============================
  */
 app.post("/notify-user", async (req, res) => {
   const { token, orderId, status } = req.body;
@@ -93,7 +94,48 @@ app.post("/notify-user", async (req, res) => {
   }
 });
 
-// ⬇⬇⬇ DEPLOY READY ⬇⬇⬇
+/**
+ * ============================
+ * ADMIN – PROMENA STATUSA PORUDŽBINE
+ * ============================
+ * PIŠE U FIRESTORE (admin privilegije)
+ *
+ * očekuje:
+ * {
+ *   orderId: "abc123",
+ *   status: "u pripremi"
+ * }
+ */
+app.post("/admin/update-order-status", async (req, res) => {
+  const { orderId, status } = req.body;
+
+  console.log("📩 ADMIN UPDATE HIT:", req.body);
+
+
+  if (!orderId || !status) {
+    return res.status(400).json({ error: "Missing orderId or status" });
+  }
+
+  try {
+    await admin
+      .firestore()
+      .collection("orders")
+      .doc(orderId)
+      .update({
+        status,
+        statusUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Order status update failed:", error);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
+/**
+ * ⬇⬇⬇ DEPLOY READY ⬇⬇⬇
+ */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Push backend running on port ${PORT}`);
