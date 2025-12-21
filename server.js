@@ -140,6 +140,36 @@ app.post("/admin/update-order-status", async (req, res) => {
 
 /**
  * ============================
+ * KREIRANJE PORUDŽBINE (KLIJENT → BACKEND → FIRESTORE)
+ * ============================
+ */
+app.post("/create-order", async (req, res) => {
+  try {
+    const orderData = req.body;
+
+    if (!orderData || !orderData.items || !orderData.total) {
+      return res.status(400).json({ error: "Invalid order data" });
+    }
+
+    const docRef = await admin
+      .firestore()
+      .collection("orders")
+      .add({
+        ...orderData,
+        status: "pending",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    res.json({ success: true, orderId: docRef.id });
+  } catch (error) {
+    console.error("❌ CREATE ORDER ERROR:", error);
+    res.status(500).json({ error: "Order creation failed" });
+  }
+});
+
+
+/**
+ * ============================
  * START SERVER
  * ============================
  */
