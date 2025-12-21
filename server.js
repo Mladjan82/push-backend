@@ -3,20 +3,28 @@ const cors = require("cors");
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
 
+/**
+ * ============================
+ * FIREBASE ADMIN INIT (JEDNOM!)
+ * koristi FIREBASE_SERVICE_ACCOUNT iz Render ENV
+ * ============================
+ */
+const serviceAccount = JSON.parse(
+  process.env.FIREBASE_SERVICE_ACCOUNT
+);
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 /**
- * FIREBASE ADMIN INIT
- * koristi Application Default Credentials (Render env)
- */
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
-});
-
-/**
- * HEALTH CHECK – za Render / UptimeRobot
+ * ============================
+ * HEALTH CHECK – Render / UptimeRobot
+ * ============================
  */
 app.get("/", (req, res) => {
   res.status(200).send("OK");
@@ -42,15 +50,17 @@ app.post("/notify-admin", async (req, res) => {
   };
 
   try {
-    const response = await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(message),
-    });
+    const response = await fetch(
+      "https://exp.host/--/api/v2/push/send",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(message),
+      }
+    );
 
     const data = await response.json();
     console.log("Admin push response:", data);
-
     res.json({ success: true, data });
   } catch (error) {
     console.error("Expo push error (admin):", error);
@@ -78,15 +88,17 @@ app.post("/notify-user", async (req, res) => {
   };
 
   try {
-    const response = await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(message),
-    });
+    const response = await fetch(
+      "https://exp.host/--/api/v2/push/send",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(message),
+      }
+    );
 
     const data = await response.json();
     console.log("User push response:", data);
-
     res.json({ success: true, data });
   } catch (error) {
     console.error("Expo push error (user):", error);
@@ -97,20 +109,13 @@ app.post("/notify-user", async (req, res) => {
 /**
  * ============================
  * ADMIN – PROMENA STATUSA PORUDŽBINE
+ * PIŠE DIREKTNO U FIRESTORE (ADMIN SDK)
  * ============================
- * PIŠE U FIRESTORE (admin privilegije)
- *
- * očekuje:
- * {
- *   orderId: "abc123",
- *   status: "u pripremi"
- * }
  */
 app.post("/admin/update-order-status", async (req, res) => {
   const { orderId, status } = req.body;
 
   console.log("📩 ADMIN UPDATE HIT:", req.body);
-
 
   if (!orderId || !status) {
     return res.status(400).json({ error: "Missing orderId or status" });
@@ -134,7 +139,9 @@ app.post("/admin/update-order-status", async (req, res) => {
 });
 
 /**
- * ⬇⬇⬇ DEPLOY READY ⬇⬇⬇
+ * ============================
+ * START SERVER
+ * ============================
  */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
