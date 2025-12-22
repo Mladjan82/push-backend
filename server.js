@@ -178,6 +178,32 @@ app.post("/create-order", async (req, res) => {
       });
     }
 
+    /**
+ * ============================
+ * ADMIN – LISTA PORUDŽBINA
+ * ============================
+ */
+app.get("/admin/orders", async (req, res) => {
+  try {
+    const snapshot = await admin
+      .firestore()
+      .collection("orders")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const orders = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.json({ success: true, orders });
+  } catch (err) {
+    console.error("ADMIN ORDERS ERROR:", err);
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
+
+
     res.json({ success: true, orderId: docRef.id });
   } catch (error) {
     console.error("❌ CREATE ORDER ERROR:", error);
