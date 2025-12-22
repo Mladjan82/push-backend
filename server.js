@@ -213,38 +213,6 @@ app.get("/admin/orders", async (req, res) => {
 
 /**
  * ============================
- * ADMIN - MENJANJE STATUSA PORUDZBINE
- * ============================
- */
-app.get("/order/:id", async (req, res) => {
-  try {
-    const snap = await admin
-      .firestore()
-      .collection("orders")
-      .doc(req.params.id)
-      .get();
-
-    if (!snap.exists) {
-      return res.status(404).json({ success: false });
-    }
-
-    const data = snap.data();
-
-    // ⚠️ po želji sakriješ podatke
-    delete data.phone;
-
-    res.json({
-      success: true,
-      order: { id: snap.id, ...data },
-    });
-  } catch {
-    res.status(500).json({ success: false });
-  }
-});
-
-
-/**
- * ============================
  * START SERVER
  * ============================
  */
