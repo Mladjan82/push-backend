@@ -151,7 +151,7 @@ app.post("/create-order", async (req, res) => {
       return res.status(400).json({ error: "Invalid order data" });
     }
 
-    // 1️⃣ Upis porudžbine
+    // 1️⃣ Upis porudžbine (Firestore server time)
     const docRef = await admin
       .firestore()
       .collection("orders")
@@ -161,13 +161,23 @@ app.post("/create-order", async (req, res) => {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-    // 2️⃣ Uzimanje admin push tokena
+    // 2️⃣ ODMAH učitaj upisani dokument
+    const snap = await docRef.get();
+    const data = snap.data();
+
+    // ✅ KLJUČNA ISPRAVKA – NORMALIZACIJA DATUMA
+    // Firestore Timestamp → ISO string
+    if (data.createdAt && typeof data.createdAt.toDate === "function") {
+      data.createdAt = data.createdAt.toDate().toISOString();
+    }
+
+    // 3️⃣ Uzimanje admin push tokena
     const adminDoc = await admin.firestore().doc("settings/Admin").get();
     const adminToken = adminDoc.data()?.pushToken;
 
-    // 3️⃣ Slanje notifikacije adminu
+    // 4️⃣ Slanje notifikacije adminu (ne blokira response)
     if (adminToken) {
-      await fetch("https://notification.bombo.rs/notify-admin", {
+      fetch("https://notification.bombo.rs/notify-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -175,8 +185,23 @@ app.post("/create-order", async (req, res) => {
           orderId: docRef.id,
           total: orderData.total,
         }),
-      });
+      }).catch(() => {});
     }
+
+    // 5️⃣ ODGOVOR KLIJENTU – UVEK SA VALIDNIM DATUMOM
+    res.json({
+      success: true,
+      order: {
+        id: docRef.id,
+        ...data,
+      },
+    });
+  } catch (error) {
+    console.error("❌ CREATE ORDER ERROR:", error);
+    res.status(500).json({ error: "Order creation failed" });
+  }
+});
+
 
     /**
  * ============================
