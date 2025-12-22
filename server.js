@@ -229,12 +229,6 @@ app.get("/admin/orders", async (req, res) => {
 });
 
 
-    res.json({ success: true, orderId: docRef.id });
-  } catch (error) {
-    console.error("❌ CREATE ORDER ERROR:", error);
-    res.status(500).json({ error: "Order creation failed" });
-  }
-});
 
 /**
  * ============================
