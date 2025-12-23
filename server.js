@@ -157,7 +157,7 @@ app.post("/create-order", async (req, res) => {
       .collection("orders")
       .add({
         ...orderData,
-        status: "pending",
+        status: "Na čekanju",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -227,6 +227,7 @@ app.get("/admin/orders", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch orders" });
   }
 });
+
 
 
 
