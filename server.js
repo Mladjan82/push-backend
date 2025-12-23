@@ -157,7 +157,7 @@ app.post("/create-order", async (req, res) => {
       .collection("orders")
       .add({
         ...orderData,
-        status: "Na čekanju",
+        status: "pending",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
