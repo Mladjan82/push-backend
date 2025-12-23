@@ -157,25 +157,15 @@ app.post("/create-order", async (req, res) => {
       .collection("orders")
       .add({
         ...orderData,
-        status: "panding",
+        status: "pending", // ⬅️ ispravljeno (ne "panding")
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-    // 2️⃣ ODMAH učitaj upisani dokument
-    const snap = await docRef.get();
-    const data = snap.data();
-
-    // ✅ KLJUČNA ISPRAVKA – NORMALIZACIJA DATUMA
-    // Firestore Timestamp → ISO string
-    if (data.createdAt && typeof data.createdAt.toDate === "function") {
-      data.createdAt = data.createdAt.toDate().toISOString();
-    }
-
-    // 3️⃣ Uzimanje admin push tokena
+    // 2️⃣ Uzimanje admin push tokena
     const adminDoc = await admin.firestore().doc("settings/Admin").get();
     const adminToken = adminDoc.data()?.pushToken;
 
-    // 4️⃣ Slanje notifikacije adminu (ne blokira response)
+    // 3️⃣ Slanje notifikacije adminu (NE BLOKIRA RESPONSE)
     if (adminToken) {
       fetch("https://notification.bombo.rs/notify-admin", {
         method: "POST",
@@ -188,19 +178,17 @@ app.post("/create-order", async (req, res) => {
       }).catch(() => {});
     }
 
-    // 5️⃣ ODGOVOR KLIJENTU – UVEK SA VALIDNIM DATUMOM
+    // 4️⃣ Odgovor klijentu – SAMO ID (kao ranije)
     res.json({
       success: true,
-      order: {
-        id: docRef.id,
-        ...data,
-      },
+      orderId: docRef.id,
     });
   } catch (error) {
     console.error("❌ CREATE ORDER ERROR:", error);
     res.status(500).json({ error: "Order creation failed" });
   }
 });
+
 
 
     /**
