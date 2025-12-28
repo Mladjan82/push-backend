@@ -304,12 +304,18 @@ app.post("/admin/login", async (req, res) => {
     }
 
     // ✅ ako postoji push token – snimi ga
-    if (pushToken) {
-      await admin.firestore().doc("settings/Admin").update({
-        pushToken,
-        lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    }
+ console.log("📩 PUSH TOKEN RECEIVED:", pushToken);
+
+if (typeof pushToken === "string" && pushToken.length > 10) {
+  await admin.firestore().doc("settings/Admin").update({
+    pushToken: pushToken,
+    lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  console.log("✅ PUSH TOKEN SAVED");
+} else {
+  console.log("⚠️ PUSH TOKEN MISSING OR INVALID");
+}
+
 
     return res.json({
       success: true,
