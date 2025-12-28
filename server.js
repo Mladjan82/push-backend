@@ -278,6 +278,50 @@ app.get("/order/:id", async (req, res) => {
 });
 
 
+
+// ===============================
+// ADMIN LOGIN (SIGURNA VARIJANTA)
+// ===============================
+app.post("/admin/login", async (req, res) => {
+  const { password, pushToken } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ error: "Nedostaje lozinka" });
+  }
+
+  try {
+    const adminDoc = await admin.firestore().doc("settings/Admin").get();
+
+    if (!adminDoc.exists) {
+      return res.status(404).json({ error: "Admin ne postoji" });
+    }
+
+    const adminData = adminDoc.data();
+
+    // ❌ pogrešna lozinka
+    if (password !== adminData.password) {
+      return res.status(401).json({ error: "Pogrešna lozinka" });
+    }
+
+    // ✅ ako postoji push token – snimi ga
+    if (pushToken) {
+      await admin.firestore().doc("settings/Admin").update({
+        pushToken,
+        lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Admin login OK",
+    });
+  } catch (err) {
+    console.error("ADMIN LOGIN ERROR:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 /**
  * ============================
  * START SERVER
