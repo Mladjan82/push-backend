@@ -396,6 +396,8 @@ app.post("/admin/delivery-status", async (req, res) => {
     await admin.firestore().doc("settings/deliveryEnabled").set({
       deliveryStatus,
       message,
+      price: 200,
+      deliveryLimit: 2000,
     });
 
     res.json({ success: true });
