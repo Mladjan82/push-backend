@@ -329,6 +329,84 @@ if (typeof pushToken === "string" && pushToken.length > 10) {
 
 
 
+/**
+ * ============================
+ * APP STATUS – ČITANJE
+ * Admin panel dobija da li je restoran otvoren ili zatvoren
+ * ============================
+ */
+app.get("/admin/app-status", async (req, res) => {
+  try {
+    const snap = await admin.firestore().doc("settings/appStatus").get();
+    res.json(snap.data());
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load app status" });
+  }
+});
+
+
+/**
+ * ============================
+ * APP STATUS – AŽURIRANJE
+ * Admin menja status restorana (otvoreno/zatvoreno)
+ * ============================
+ */
+app.post("/admin/app-status", async (req, res) => {
+  const { isClosed, message } = req.body;
+
+  try {
+    await admin.firestore().doc("settings/appStatus").set({
+      isClosed,
+      message,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update app status" });
+  }
+});
+
+
+/**
+ * ============================
+ * DELIVERY STATUS – ČITANJE
+ * Da li je dostava omogućena
+ * ============================
+ */
+app.get("/admin/delivery-status", async (req, res) => {
+  try {
+    const snap = await admin.firestore().doc("settings/deliveryEnabled").get();
+    res.json(snap.data());
+  } catch (error) {
+    res.status(500).json({ error: "Failed to load delivery status" });
+  }
+});
+
+
+/**
+ * ============================
+ * DELIVERY STATUS – AŽURIRANJE
+ * Admin uključuje / isključuje dostavu
+ * ============================
+ */
+app.post("/admin/delivery-status", async (req, res) => {
+  const { deliveryStatus, message } = req.body;
+
+  try {
+    await admin.firestore().doc("settings/deliveryEnabled").set({
+      deliveryStatus,
+      message,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update delivery status" });
+  }
+});
+
+
+
+
 
 
 
