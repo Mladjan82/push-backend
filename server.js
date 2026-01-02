@@ -28,7 +28,6 @@ const bucket = admin.storage().bucket();
  * ============================
  */
 const app = express();
-app.set("trust proxy", true);
 app.use(cors());
 app.use(express.json());
 
@@ -464,6 +463,7 @@ app.get("/admin/products", async (req, res) => {
     res.status(500).json({ error: "Failed to load products" });
   }
 });
+
 
 
 /**
