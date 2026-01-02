@@ -30,6 +30,7 @@ admin.initializeApp({
 });
 
 const app = express();
+app.set("trust proxy", true);
 app.use(cors());
 app.use(express.json());
 
@@ -557,7 +558,9 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     const file = bucket.file(fileName);
 
     const stream = file.createWriteStream({
-      metadata: { contentType: req.file.mimetype },
+      metadata: {
+        contentType: req.file.mimetype,
+      },
     });
 
     stream.on("error", (err) => {
@@ -566,9 +569,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     });
 
     stream.on("finish", async () => {
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      const publicUrl = `https://${bucket.name}.storage.googleapis.com/${fileName}`;
 
-      // 🔥 OVO JE KLJUČNO
       await admin
         .firestore()
         .collection("categories")
@@ -582,7 +584,6 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
     stream.end(req.file.buffer);
   } catch (err) {
-    console.error("UPLOAD ERROR:", err);
     res.status(500).json({ error: "Upload failed" });
   }
 });
