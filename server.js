@@ -472,7 +472,7 @@ app.get("/admin/products", async (req, res) => {
  * ============================
  */
 
-router.get("/admin/product/:categoryId/:productId", async (req, res) => {
+app.get("/admin/product/:categoryId/:productId", async (req, res) => {
   try {
     const { categoryId, productId } = req.params;
 
