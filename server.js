@@ -1,24 +1,13 @@
-
-
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
-
-
-
 const multer = require("multer");
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
-
+const sharp = require("sharp");
 
 /**
  * ============================
- * FIREBASE ADMIN INIT (JEDNOM!)
- * koristi FIREBASE_SERVICE_ACCOUNT iz Render ENV
+ * FIREBASE ADMIN INIT
  * ============================
  */
 const serviceAccount = JSON.parse(
@@ -27,16 +16,30 @@ const serviceAccount = JSON.parse(
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
+  storageBucket: "restoranbombo-d3366.appspot.com",
 });
 
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
+
+/**
+ * ============================
+ * EXPRESS SETUP
+ * ============================
+ */
 const app = express();
 app.set("trust proxy", true);
 app.use(cors());
 app.use(express.json());
 
-
-const { getStorage } = require("firebase-admin/storage");
-const storage = getStorage();
+/**
+ * ============================
+ * MULTER (UPLOAD HANDLER)
+ * ============================
+ */
+const upload = multer({
+  storage: multer.memoryStorage(),
+});
 
 
 /**
@@ -468,12 +471,12 @@ app.get("/admin/products", async (req, res) => {
  * ADMIN – DOHVAT JEDNOG PROIZVODA
  * ============================
  */
-app.get("/admin/product/:categoryId/:productId", async (req, res) => {
-  const { categoryId, productId } = req.params;
 
+router.get("/admin/product/:categoryId/:productId", async (req, res) => {
   try {
-    const snap = await admin
-      .firestore()
+    const { categoryId, productId } = req.params;
+
+    const snap = await db
       .collection("categories")
       .doc(categoryId)
       .collection("products")
@@ -484,10 +487,10 @@ app.get("/admin/product/:categoryId/:productId", async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    res.json({ success: true, product: snap.data() });
+    return res.json(snap.data());
   } catch (err) {
-    console.error("GET PRODUCT ERROR:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("GET product error:", err);
+    return res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -496,47 +499,83 @@ app.get("/admin/product/:categoryId/:productId", async (req, res) => {
  * ADMIN – UPDATE PROIZVOD
  * ============================
  */
-app.put("/admin/product/:categoryId/:productId", async (req, res) => {
-  const { categoryId, productId } = req.params;
-  const data = req.body;
-
+app.post("/admin/update-product", async (req, res) => {
   try {
-    await admin
-      .firestore()
+    const { categoryId, productId, data } = req.body;
+
+    if (!categoryId || !productId || !data) {
+      return res.status(400).json({ error: "Nedostaju podaci" });
+    }
+
+    await db
       .collection("categories")
       .doc(categoryId)
       .collection("products")
       .doc(productId)
       .update(data);
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (err) {
     console.error("UPDATE PRODUCT ERROR:", err);
-    res.status(500).json({ error: "Update failed" });
+    return res.status(500).json({ error: "Greška pri ažuriranju proizvoda" });
   }
 });
+
 
 /**
  * ============================
  * ADMIN – DELETE PRODUCT
  * ============================
  */
-app.delete("/admin/product/:categoryId/:productId", async (req, res) => {
+app.post("/admin/delete-product", async (req, res) => {
   try {
-    await admin
-      .firestore()
+    const { categoryId, productId } = req.body;
+
+    if (!categoryId || !productId) {
+      return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
+    }
+
+    // referenca na dokument
+    const productRef = db
       .collection("categories")
       .doc(categoryId)
       .collection("products")
-      .doc(productId)
-      .delete();
+      .doc(productId);
 
-    res.json({ success: true });
+    // uzmi podatke (da znamo da li postoji slika)
+    const snap = await productRef.get();
+
+    if (!snap.exists) {
+      return res.status(404).json({ error: "Proizvod ne postoji" });
+    }
+
+    const data = snap.data();
+
+    // ako postoji slika – brišemo je iz storage-a
+    if (data.imageURL) {
+      try {
+        const filePath = data.imageURL.split(
+          `https://storage.googleapis.com/${bucket.name}/`
+        )[1];
+
+        if (filePath) {
+          await bucket.file(filePath).delete();
+        }
+      } catch (err) {
+        console.warn("Ne mogu obrisati sliku:", err.message);
+      }
+    }
+
+    // brišemo proizvod iz Firestore-a
+    await productRef.delete();
+
+    return res.json({ success: true });
   } catch (err) {
     console.error("DELETE PRODUCT ERROR:", err);
-    res.status(500).json({ error: "Delete failed" });
+    return res.status(500).json({ error: "Greška pri brisanju proizvoda" });
   }
 });
+
 
 
 /**
@@ -545,32 +584,41 @@ app.delete("/admin/product/:categoryId/:productId", async (req, res) => {
  * ============================
  */
 
-app.post("/upload", upload.single("file"), async (req, res) => {
+app.post("/admin/upload-product-image", upload.single("image"), async (req, res) => {
   try {
+    const { categoryId, productId } = req.body;
+
     if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+      return res.status(400).json({ error: "Nedostaje slika" });
     }
 
-    const bucket = admin.storage().bucket();
-    const fileName = `products/${Date.now()}_${req.file.originalname}`;
-    const file = bucket.file(fileName);
+    if (!categoryId || !productId) {
+      return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
+    }
 
-    const stream = file.createWriteStream({
-      metadata: { contentType: req.file.mimetype },
+    // Kompresija + konverzija u WEBP
+    const processedImage = await sharp(req.file.buffer)
+      .resize(1000)
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    // Putanja u Firebase Storage
+    const filePath = `products/${categoryId}/${productId}.webp`;
+    const file = bucket.file(filePath);
+
+    // Upload u Firebase Storage
+    await file.save(processedImage, {
+      contentType: "image/webp",
+      public: true,
     });
 
-    stream.on("error", () => {
-      res.status(500).json({ error: "Upload failed" });
-    });
+    // Javni URL
+    const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
-    stream.on("finish", async () => {
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-      res.json({ url: publicUrl });
-    });
-
-    stream.end(req.file.buffer);
-  } catch {
-    res.status(500).json({ error: "Upload failed" });
+    return res.json({ imageURL });
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+    return res.status(500).json({ error: "Upload failed" });
   }
 });
 
