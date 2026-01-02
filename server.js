@@ -557,9 +557,7 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     const file = bucket.file(fileName);
 
     const stream = file.createWriteStream({
-      metadata: {
-        contentType: req.file.mimetype,
-      },
+      metadata: { contentType: req.file.mimetype },
     });
 
     stream.on("error", (err) => {
@@ -570,16 +568,14 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     stream.on("finish", async () => {
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
-      // 🔥 OVO JE KLJUČNO – UPIS U FIRESTORE
+      // 🔥 OVO JE KLJUČNO
       await admin
         .firestore()
         .collection("categories")
         .doc(categoryId)
         .collection("products")
         .doc(productId)
-        .update({
-          imageURL: publicUrl,
-        });
+        .update({ imageURL: publicUrl });
 
       res.json({ url: publicUrl });
     });
@@ -590,6 +586,7 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: "Upload failed" });
   }
 });
+
 
 
 
