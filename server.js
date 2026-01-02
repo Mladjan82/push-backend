@@ -445,6 +445,82 @@ app.get("/admin/products", async (req, res) => {
 });
 
 
+/**
+ * ============================
+ * ADMIN – DOHVAT JEDNOG PROIZVODA
+ * ============================
+ */
+app.get("/admin/product/:categoryId/:productId", async (req, res) => {
+  const { categoryId, productId } = req.params;
+
+  try {
+    const snap = await admin
+      .firestore()
+      .collection("categories")
+      .doc(categoryId)
+      .collection("products")
+      .doc(productId)
+      .get();
+
+    if (!snap.exists) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.json({ success: true, product: snap.data() });
+  } catch (err) {
+    console.error("GET PRODUCT ERROR:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * ============================
+ * ADMIN – UPDATE PROIZVOD
+ * ============================
+ */
+app.put("/admin/product/:categoryId/:productId", async (req, res) => {
+  const { categoryId, productId } = req.params;
+  const data = req.body;
+
+  try {
+    await admin
+      .firestore()
+      .collection("categories")
+      .doc(categoryId)
+      .collection("products")
+      .doc(productId)
+      .update(data);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("UPDATE PRODUCT ERROR:", err);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
+/**
+ * ============================
+ * ADMIN – DELETE PRODUCT
+ * ============================
+ */
+app.delete("/admin/product/:categoryId/:productId", async (req, res) => {
+  try {
+    await admin
+      .firestore()
+      .collection("categories")
+      .doc(categoryId)
+      .collection("products")
+      .doc(productId)
+      .delete();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE PRODUCT ERROR:", err);
+    res.status(500).json({ error: "Delete failed" });
+  }
+});
+
+
 
 
 /**
