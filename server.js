@@ -157,7 +157,7 @@ app.post("/create-order", async (req, res) => {
       .collection("orders")
       .add({
         ...orderData,
-        status: "pending", // ⬅️ ispravljeno (ne "panding")
+        status: "pending", 
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -408,6 +408,41 @@ app.post("/admin/delivery-status", async (req, res) => {
 
 
 
+/**
+ * ============================
+ * ADMIN – LISTA KATEGORIJA + PROIZVODA
+ * ============================
+ */
+app.get("/admin/products", async (req, res) => {
+  try {
+    const categoriesSnap = await admin.firestore().collection("categories").get();
+
+    const result = [];
+
+    for (const cat of categoriesSnap.docs) {
+      const productsSnap = await admin
+        .firestore()
+        .collection("categories")
+        .doc(cat.id)
+        .collection("products")
+        .get();
+
+      result.push({
+        id: cat.id,
+        name: cat.data().name || cat.id,
+        products: productsSnap.docs.map(p => ({
+          id: p.id,
+          ...p.data(),
+        })),
+      });
+    }
+
+    res.json({ success: true, categories: result });
+  } catch (err) {
+    console.error("ADMIN PRODUCTS ERROR:", err);
+    res.status(500).json({ error: "Failed to load products" });
+  }
+});
 
 
 
