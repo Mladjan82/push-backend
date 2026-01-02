@@ -547,10 +547,8 @@ app.delete("/admin/product/:categoryId/:productId", async (req, res) => {
 
 app.post("/upload", upload.single("file"), async (req, res) => {
   try {
-    const { categoryId, productId } = req.body;
-
-    if (!req.file || !categoryId || !productId) {
-      return res.status(400).json({ error: "Missing data" });
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
     const bucket = admin.storage().bucket();
@@ -558,36 +556,23 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     const file = bucket.file(fileName);
 
     const stream = file.createWriteStream({
-      metadata: {
-        contentType: req.file.mimetype,
-      },
+      metadata: { contentType: req.file.mimetype },
     });
 
-    stream.on("error", (err) => {
-      console.error("Upload error:", err);
+    stream.on("error", () => {
       res.status(500).json({ error: "Upload failed" });
     });
 
     stream.on("finish", async () => {
-      const publicUrl = `https://${bucket.name}.storage.googleapis.com/${fileName}`;
-
-      await admin
-        .firestore()
-        .collection("categories")
-        .doc(categoryId)
-        .collection("products")
-        .doc(productId)
-        .update({ imageURL: publicUrl });
-
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
       res.json({ url: publicUrl });
     });
 
     stream.end(req.file.buffer);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Upload failed" });
   }
 });
-
 
 
 
