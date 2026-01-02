@@ -546,8 +546,10 @@ app.delete("/admin/product/:categoryId/:productId", async (req, res) => {
 
 app.post("/upload", upload.single("file"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+    const { categoryId, productId } = req.body;
+
+    if (!req.file || !categoryId || !productId) {
+      return res.status(400).json({ error: "Missing data" });
     }
 
     const bucket = admin.storage().bucket();
@@ -566,13 +568,25 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     });
 
     stream.on("finish", async () => {
-      await file.makePublic();
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+      // 🔥 OVO JE KLJUČNO – UPIS U FIRESTORE
+      await admin
+        .firestore()
+        .collection("categories")
+        .doc(categoryId)
+        .collection("products")
+        .doc(productId)
+        .update({
+          imageURL: publicUrl,
+        });
+
       res.json({ url: publicUrl });
     });
 
     stream.end(req.file.buffer);
   } catch (err) {
+    console.error("UPLOAD ERROR:", err);
     res.status(500).json({ error: "Upload failed" });
   }
 });
