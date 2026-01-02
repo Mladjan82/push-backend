@@ -1,10 +1,11 @@
+
+
 const express = require("express");
 const cors = require("cors");
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
 
-const { getStorage } = require("firebase-admin/storage");
-const storage = getStorage();
+
 
 const multer = require("multer");
 
@@ -33,7 +34,8 @@ app.use(cors());
 app.use(express.json());
 
 
-
+const { getStorage } = require("firebase-admin/storage");
+const storage = getStorage();
 
 
 /**
