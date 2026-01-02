@@ -552,9 +552,10 @@ app.post("/upload", upload.single("file"), (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  res.json({
-    url: `/uploads/${req.file.filename}`,
-  });
+res.json({
+  url: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
+});
+
 });
 
 
