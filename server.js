@@ -6,6 +6,12 @@ const admin = require("firebase-admin");
 const { getStorage } = require("firebase-admin/storage");
 const storage = getStorage();
 
+const multer = require("multer");
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 
 /**
