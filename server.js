@@ -606,13 +606,15 @@ app.post("/admin/upload-product-image", upload.single("image"), async (req, res)
     const filePath = `products/${categoryId}/${productId}.webp`;
     const file = bucket.file(filePath);
 
-    // Upload u Firebase Storage
+    // 1️⃣ Upload u Firebase Storage (BEZ public:true)
     await file.save(processedImage, {
       contentType: "image/webp",
-      public: true,
     });
 
-    // Javni URL
+    // 2️⃣ Ručno postavi fajl kao javan
+    await file.makePublic();
+
+    // 3️⃣ Stabilan, JAVNI URL (bez tokena)
     const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
     return res.json({ imageURL });
