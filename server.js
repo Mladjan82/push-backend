@@ -3,8 +3,9 @@ const cors = require("cors");
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
 
-const multer = require("multer");
-const path = require("path");
+const { getStorage } = require("firebase-admin/storage");
+const storage = getStorage();
+
 
 
 /**
@@ -25,20 +26,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, "uploads");
-    },
-    filename: (req, file, cb) => {
-      const uniqueName =
-        Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, uniqueName + path.extname(file.originalname));
-    },
-  }),
-});
 
-app.use("/uploads", express.static("uploads"));
+
 
 
 /**
@@ -547,16 +536,39 @@ app.delete("/admin/product/:categoryId/:productId", async (req, res) => {
  * ============================
  */
 
-app.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
+app.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const bucket = admin.storage().bucket();
+    const fileName = `products/${Date.now()}_${req.file.originalname}`;
+    const file = bucket.file(fileName);
+
+    const stream = file.createWriteStream({
+      metadata: {
+        contentType: req.file.mimetype,
+      },
+    });
+
+    stream.on("error", (err) => {
+      console.error("Upload error:", err);
+      res.status(500).json({ error: "Upload failed" });
+    });
+
+    stream.on("finish", async () => {
+      await file.makePublic();
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+      res.json({ url: publicUrl });
+    });
+
+    stream.end(req.file.buffer);
+  } catch (err) {
+    res.status(500).json({ error: "Upload failed" });
   }
-
-res.json({
-  url: `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`,
 });
 
-});
 
 
 /**
