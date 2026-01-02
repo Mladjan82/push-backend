@@ -3,6 +3,10 @@ const cors = require("cors");
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
 
+const multer = require("multer");
+const path = require("path");
+
+
 /**
  * ============================
  * FIREBASE ADMIN INIT (JEDNOM!)
@@ -20,6 +24,22 @@ admin.initializeApp({
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, "uploads");
+    },
+    filename: (req, file, cb) => {
+      const uniqueName =
+        Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, uniqueName + path.extname(file.originalname));
+    },
+  }),
+});
+
+app.use("/uploads", express.static("uploads"));
+
 
 /**
  * ============================
@@ -521,6 +541,21 @@ app.delete("/admin/product/:categoryId/:productId", async (req, res) => {
 });
 
 
+/**
+ * ============================
+ * UPLOAD SLIKA
+ * ============================
+ */
+
+app.post("/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  res.json({
+    url: `/uploads/${req.file.filename}`,
+  });
+});
 
 
 /**
