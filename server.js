@@ -586,10 +586,6 @@ app.post("/admin/delete-product", async (req, res) => {
  */
 
 app.post("/admin/upload-product-image", upload.single("image"), async (req, res) => {
-  console.log("🔥 UPLOAD HIT (NO SHARP)");
-  console.log("BODY:", req.body);
-  console.log("FILE:", req.file);
-
   try {
     const { categoryId, productId } = req.body;
 
@@ -601,26 +597,38 @@ app.post("/admin/upload-product-image", upload.single("image"), async (req, res)
       return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
     }
 
-    // ⛔ NEMA sharp-a, NEMA obrade
-    const filePath = `products/${categoryId}/${productId}.jpg`;
+    const processedImage = await sharp(req.file.buffer, {
+      failOnError: false,
+    })
+      .rotate()
+      .resize({
+        width: 1000,
+        withoutEnlargement: true,
+      })
+      .toFormat("webp", {
+        quality: 75,
+        effort: 4,
+      })
+      .toBuffer();
+
+    const filePath = `products/${categoryId}/${productId}.webp`;
     const file = bucket.file(filePath);
 
-    await file.save(req.file.buffer, {
-      contentType: req.file.mimetype, // image/jpeg
+    await file.save(processedImage, {
+      contentType: "image/webp",
     });
 
     await file.makePublic();
 
     const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
 
-    console.log("✅ UPLOADED:", imageURL);
-
     return res.json({ imageURL });
   } catch (err) {
-    console.error("❌ UPLOAD ERROR (NO SHARP):", err);
+    console.error("❌ UPLOAD ERROR (SHARP):", err);
     return res.status(500).json({ error: "Upload failed" });
   }
 });
+
 
 
 /**
