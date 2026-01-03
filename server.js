@@ -585,10 +585,6 @@ app.post("/admin/delete-product", async (req, res) => {
  */
 
 app.post("/admin/upload-product-image", upload.single("image"), async (req, res) => {
-  console.log("UPLOAD HIT");
-  console.log("FILE:", req.file);
-  console.log("BODY:", req.body);
-
   try {
     const { categoryId, productId } = req.body;
 
@@ -596,11 +592,67 @@ app.post("/admin/upload-product-image", upload.single("image"), async (req, res)
       return res.status(400).json({ error: "Nedostaje slika" });
     }
 
-    // dalje ne diraj još
-    return res.json({ test: true });
+    if (!categoryId || !productId) {
+      return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
+    }
+
+    // Kompresija + konverzija u WEBP
+    const processedImage = await sharp(req.file.buffer)
+      .resize(1000)
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    // Putanja u Firebase Storage
+    const filePath = `products/${categoryId}/${productId}.webp`;
+    const file = bucket.file(filePath);
+
+    // 1️⃣ Upload u Firebase Storage (BEZ public:true)
+    await file.save(processedImage, {
+      contentType: "image/webp",
+    });
+
+    // 2️⃣ Ručno postavi fajl kao javan
+    await file.makePublic();
+
+    // 3️⃣ Stabilan, JAVNI URL (bez tokena)
+    const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+    return res.json({ imageURL });
   } catch (err) {
     console.error("UPLOAD ERROR:", err);
     return res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+/**
+ * ============================
+ * ADMIN – CREATE PRODUCT
+ * ============================
+ */
+app.post("/admin/create-product", async (req, res) => {
+  try {
+    const { categoryId, data } = req.body;
+
+    if (!categoryId || !data?.name) {
+      return res.status(400).json({ error: "Nedostaju podaci" });
+    }
+
+    const ref = await db
+      .collection("categories")
+      .doc(categoryId)
+      .collection("products")
+      .add({
+        ...data,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    return res.json({
+      success: true,
+      productId: ref.id,
+    });
+  } catch (err) {
+    console.error("CREATE PRODUCT ERROR:", err);
+    return res.status(500).json({ error: "Create product failed" });
   }
 });
 
