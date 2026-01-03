@@ -16,8 +16,9 @@ const serviceAccount = JSON.parse(
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: "restoranbombo-d3366.appspot.com",
+  storageBucket: "restoranbombo-d3366.firebasestorage.app",
 });
+
 
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
