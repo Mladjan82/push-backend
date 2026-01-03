@@ -585,39 +585,41 @@ app.post("/admin/delete-product", async (req, res) => {
  * ============================
  */
 
-app.post(
-  "/admin/upload-product-image",
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      const { categoryId, productId } = req.body;
+app.post("/admin/upload-product-image", upload.single("image"), async (req, res) => {
+  console.log("🔥 UPLOAD HIT");
+  console.log("BODY:", req.body);
+  console.log("FILE:", req.file);
 
-      if (!req.file) {
-        return res.status(400).json({ error: "Nedostaje slika" });
-      }
+  try {
+    const { categoryId, productId } = req.body;
 
-      if (!categoryId || !productId) {
-        return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
-      }
-
-      const filePath = `products/${categoryId}/${productId}.jpg`;
-      const file = bucket.file(filePath);
-
-      await file.save(req.file.buffer, {
-        contentType: req.file.mimetype,
-      });
-
-      await file.makePublic();
-
-      const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-
-      return res.json({ imageURL });
-    } catch (err) {
-      console.error("UPLOAD ERROR:", err);
-      return res.status(500).json({ error: "Upload failed" });
+    if (!req.file) {
+      return res.status(400).json({ error: "Nedostaje slika" });
     }
+
+    if (!categoryId || !productId) {
+      return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
+    }
+
+    const processedImage = await sharp(req.file.buffer)
+      .resize(1000)
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    const filePath = `products/${categoryId}/${productId}.webp`;
+    const file = bucket.file(filePath);
+
+    await file.save(processedImage, { contentType: "image/webp" });
+    await file.makePublic();
+
+    const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+    return res.json({ imageURL });
+  } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+    return res.status(500).json({ error: "Upload failed" });
   }
-);
+});
 
 
 /**
