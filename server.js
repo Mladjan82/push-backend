@@ -585,53 +585,7 @@ app.post("/admin/delete-product", async (req, res) => {
  * ============================
  */
 
-app.post("/admin/upload-product-image", upload.single("image"), async (req, res) => {
-  console.log("🔥 UPLOAD HIT");
-  console.log("BODY:", req.body);
-  console.log("FILE:", req.file);
-
-  try {
-    const { categoryId, productId } = req.body;
-
-    if (!req.file) {
-      return res.status(400).json({ error: "Nedostaje slika" });
-    }
-
-    if (!categoryId || !productId) {
-      return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
-    }
-
-    const processedImage = await sharp(req.file.buffer)
-      .resize(1000)
-      .webp({ quality: 80 })
-      .toBuffer();
-
-    const filePath = `products/${categoryId}/${productId}.webp`;
-    const file = bucket.file(filePath);
-
-    await file.save(processedImage, { contentType: "image/webp" });
-    await file.makePublic();
-
-    const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-
-    return res.json({ imageURL });
-  } catch (err) {
-    console.error("UPLOAD ERROR:", err);
-    return res.status(500).json({ error: "Upload failed" });
-  }
-});
-
-
-/**
- * ============================
- * ADMIN – CREATE PRODUCT
- * ============================
- */
-app.post("/admin/create-product", async (req, res) => {
-  try {
-    const { categoryId, data } = req.body;
-
-    if (!categoryId || !data?.naapp.post(
+app.post(
   "/admin/upload-product-image",
   upload.single("image"),
   async (req, res) => {
@@ -664,7 +618,18 @@ app.post("/admin/create-product", async (req, res) => {
     }
   }
 );
-me) {
+
+
+/**
+ * ============================
+ * ADMIN – CREATE PRODUCT
+ * ============================
+ */
+app.post("/admin/create-product", async (req, res) => {
+  try {
+    const { categoryId, data } = req.body;
+
+    if (!categoryId || !data?.name) {
       return res.status(400).json({ error: "Nedostaju podaci" });
     }
 
