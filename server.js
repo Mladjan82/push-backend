@@ -602,8 +602,8 @@ app.post("/admin/upload-product-image", upload.single("image"), async (req, res)
     }
 
     const processedImage = await sharp(req.file.buffer)
-      .resize(1000)
-      .webp({ quality: 80 })
+      .resize(800)
+      .webp({ quality: 65 })
       .toBuffer();
 
     const filePath = `products/${categoryId}/${productId}.webp`;
