@@ -631,7 +631,40 @@ app.post("/admin/create-product", async (req, res) => {
   try {
     const { categoryId, data } = req.body;
 
-    if (!categoryId || !data?.name) {
+    if (!categoryId || !data?.naapp.post(
+  "/admin/upload-product-image",
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const { categoryId, productId } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "Nedostaje slika" });
+      }
+
+      if (!categoryId || !productId) {
+        return res.status(400).json({ error: "Nedostaje categoryId ili productId" });
+      }
+
+      const filePath = `products/${categoryId}/${productId}.jpg`;
+      const file = bucket.file(filePath);
+
+      await file.save(req.file.buffer, {
+        contentType: req.file.mimetype,
+      });
+
+      await file.makePublic();
+
+      const imageURL = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+      return res.json({ imageURL });
+    } catch (err) {
+      console.error("UPLOAD ERROR:", err);
+      return res.status(500).json({ error: "Upload failed" });
+    }
+  }
+);
+me) {
       return res.status(400).json({ error: "Nedostaju podaci" });
     }
 
