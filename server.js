@@ -441,14 +441,12 @@ app.get("/admin/products", async (req, res) => {
     const result = [];
 
     for (const cat of categoriesSnap.docs) {
-const productsSnap = await admin
-  .firestore()
-  .collection("categories")
-  .doc(cat.id)
-  .collection("products")
-  .orderBy("order", "asc")
-  .get();
-
+      const productsSnap = await admin
+        .firestore()
+        .collection("categories")
+        .doc(cat.id)
+        .collection("products")
+        .get();
 
       result.push({
         id: cat.id,
