@@ -437,7 +437,6 @@ app.post("/admin/delivery-status", async (req, res) => {
 app.get("/admin/products", async (req, res) => {
   try {
     const categoriesSnap = await admin.firestore().collection("categories").get();
-
     const result = [];
 
     for (const cat of categoriesSnap.docs) {
@@ -448,13 +447,31 @@ app.get("/admin/products", async (req, res) => {
         .collection("products")
         .get();
 
+      // ⬇️ OVO JE KLJUČNO
+      const products = productsSnap.docs
+        .map(p => ({
+          id: p.id,
+          ...p.data(),
+        }))
+        .sort((a, b) => {
+          // 1️⃣ ako oba imaju order → koristi order
+          if (typeof a.order === "number" && typeof b.order === "number") {
+            return a.order - b.order;
+          }
+
+          // 2️⃣ fallback: createdAt
+          if (a.createdAt?.seconds && b.createdAt?.seconds) {
+            return a.createdAt.seconds - b.createdAt.seconds;
+          }
+
+          // 3️⃣ fallback fallback
+          return 0;
+        });
+
       result.push({
         id: cat.id,
         name: cat.data().name || cat.id,
-        products: productsSnap.docs.map(p => ({
-          id: p.id,
-          ...p.data(),
-        })),
+        products,
       });
     }
 
