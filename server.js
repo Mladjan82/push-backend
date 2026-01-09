@@ -663,6 +663,34 @@ app.post("/admin/create-product", async (req, res) => {
   }
 });
 
+/**
+ * ============================
+ * ADMIN – ZAMENA REDOSLEDA
+ * ============================
+ */
+
+app.post("/admin/swap-product-order", async (req, res) => {
+  const { categoryId, firstId, secondId, firstOrder, secondOrder } = req.body;
+
+  try {
+    const col = db
+      .collection("categories")
+      .doc(categoryId)
+      .collection("products");
+
+    await Promise.all([
+      col.doc(firstId).update({ order: secondOrder }),
+      col.doc(secondId).update({ order: firstOrder }),
+    ]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("SWAP ORDER ERROR:", err);
+    res.status(500).json({ error: "Swap failed" });
+  }
+});
+
+
 
 /**
  * ============================
