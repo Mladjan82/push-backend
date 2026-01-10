@@ -325,13 +325,20 @@ app.get("/order/:id", async (req, res) => {
 
 
 // ===============================
-// ADMIN LOGIN (SIGURNA VARIJANTA)
+// ADMIN LOGIN (EMAIL + LOZINKA + WHITELIST)
 // ===============================
 app.post("/admin/login", async (req, res) => {
-  const { password, pushToken } = req.body;
+  const { email, password, pushToken } = req.body;
 
-  if (!password) {
-    return res.status(400).json({ error: "Nedostaje lozinka" });
+  if (!email || !password) {
+    return res.status(400).json({ error: "Nedostaje email ili lozinka" });
+  }
+
+  // 🔒 DOZVOLJEN SAMO JEDAN ADMIN EMAIL
+  const ALLOWED_ADMIN_EMAIL = "panamivh@gmail.com";
+
+  if (email !== ALLOWED_ADMIN_EMAIL) {
+    return res.status(403).json({ error: "Nedozvoljen admin nalog" });
   }
 
   try {
@@ -349,18 +356,17 @@ app.post("/admin/login", async (req, res) => {
     }
 
     // ✅ ako postoji push token – snimi ga
- console.log("📩 PUSH TOKEN RECEIVED:", pushToken);
+    console.log("📩 PUSH TOKEN RECEIVED:", pushToken);
 
-if (typeof pushToken === "string" && pushToken.length > 10) {
-  await admin.firestore().doc("settings/Admin").update({
-    pushToken: pushToken,
-    lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  console.log("✅ PUSH TOKEN SAVED");
-} else {
-  console.log("⚠️ PUSH TOKEN MISSING OR INVALID");
-}
-
+    if (typeof pushToken === "string" && pushToken.length > 10) {
+      await admin.firestore().doc("settings/Admin").update({
+        pushToken: pushToken,
+        lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log("✅ PUSH TOKEN SAVED");
+    } else {
+      console.log("⚠️ PUSH TOKEN MISSING OR INVALID");
+    }
 
     return res.json({
       success: true,
