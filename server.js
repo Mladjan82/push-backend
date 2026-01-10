@@ -143,14 +143,37 @@ app.post("/admin/update-order-status", async (req, res) => {
   }
 
   try {
-    await admin
-      .firestore()
-      .collection("orders")
-      .doc(orderId)
-      .update({
-        status,
-        statusUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    const orderRef = admin.firestore().collection("orders").doc(orderId);
+    const snap = await orderRef.get();
+
+    if (!snap.exists) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const order = snap.data();
+
+    // 1️⃣ Update status
+    await orderRef.update({
+      status,
+      statusUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 2️⃣ Slanje notifikacije korisniku (SAMO ZA OVE STATUSE)
+    const NOTIFY_STATUSES = ["u pripremi", "spremno", "odbijeno"];
+
+    if (NOTIFY_STATUSES.includes(status) && order.pushToken) {
+      fetch("https://notification.bombo.rs/notify-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: order.pushToken,
+          orderId,
+          status,
+        }),
+      }).catch((err) => {
+        console.warn("⚠️ Notify user failed:", err.message);
       });
+    }
 
     res.json({ success: true });
   } catch (error) {
@@ -158,6 +181,7 @@ app.post("/admin/update-order-status", async (req, res) => {
     res.status(500).json({ error: "Update failed" });
   }
 });
+
 
 /**
  * ============================
