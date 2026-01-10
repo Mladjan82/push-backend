@@ -5,6 +5,9 @@ const admin = require("firebase-admin");
 const multer = require("multer");
 const sharp = require("sharp");
 
+const WEB_ADMIN_PASSWORD = "BoMbO-2026";
+
+
 /**
  * ============================
  * FIREBASE ADMIN INIT
@@ -721,15 +724,15 @@ app.post("/admin/swap-product-order", async (req, res) => {
  * LOGOVANJE IZ WEB ADMIN PANELA
  * ============================
  */
+app.use(express.json());
 
 app.post("/web-admin/login", (req, res) => {
   const { password } = req.body;
 
-  if (password !== process.env.WEB_ADMIN_PASSWORD) {
+  if (password !== WEB_ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Pogrešna lozinka" });
   }
 
-  // možeš i token, ali za početak je OK
   res.json({ success: true });
 });
 
