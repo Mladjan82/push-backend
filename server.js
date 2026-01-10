@@ -718,6 +718,24 @@ app.post("/admin/swap-product-order", async (req, res) => {
 
 /**
  * ============================
+ * LOGOVANJE IZ WEB ADMIN PANELA
+ * ============================
+ */
+
+app.post("/web-admin/login", (req, res) => {
+  const { password } = req.body;
+
+  if (password !== process.env.WEB_ADMIN_PASSWORD) {
+    return res.status(401).json({ error: "Pogrešna lozinka" });
+  }
+
+  // možeš i token, ali za početak je OK
+  res.json({ success: true });
+});
+
+
+/**
+ * ============================
  * START SERVER
  * ============================
  */
