@@ -335,7 +335,7 @@ app.post("/admin/login", async (req, res) => {
   }
 
   // 🔒 DOZVOLJEN SAMO JEDAN ADMIN EMAIL
-  const ALLOWED_ADMIN_EMAIL = "panamivh@gmail.com";
+  const ALLOWED_ADMIN_EMAIL = "panamivhan@gmail.com";
 
   if (email !== ALLOWED_ADMIN_EMAIL) {
     return res.status(403).json({ error: "Nedozvoljen admin nalog" });
