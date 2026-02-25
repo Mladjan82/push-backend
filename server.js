@@ -5,6 +5,22 @@ const admin = require("firebase-admin");
 const multer = require("multer");
 const sharp = require("sharp");
 
+
+function getDateKeyBelgrade() {
+  const now = new Date();
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Belgrade",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(now); // "YYYY-MM-DD"
+}
+
+function pad3(n) {
+  return String(n).padStart(3, "0");
+}
+
 /**
  * ============================
  * FIREBASE ADMIN INIT
@@ -196,15 +212,46 @@ app.post("/create-order", async (req, res) => {
       return res.status(400).json({ error: "Invalid order data" });
     }
 
-    // 1️⃣ Upis porudžbine (Firestore server time)
-    const docRef = await admin
-      .firestore()
-      .collection("orders")
-      .add({
+    const dateKey = getDateKeyBelgrade(); // npr "2026-02-25"
+    const counterRef = admin.firestore().collection("dailyCounters").doc(dateKey);
+    const ordersCol = admin.firestore().collection("orders");
+
+    let docRef;
+    let dailyNumber;
+    let displayNumber;
+
+    await admin.firestore().runTransaction(async (tx) => {
+      const counterSnap = await tx.get(counterRef);
+
+      const next = counterSnap.exists ? (counterSnap.data().nextNumber || 0) : 0;
+
+      dailyNumber = next; // broji od 0
+      displayNumber = `${dateKey}-${pad3(dailyNumber)}`; // npr "2026-02-25-007"
+
+      // pravimo novi order doc sa auto-id (ali kontrolisano)
+      docRef = ordersCol.doc();
+
+      tx.set(docRef, {
         ...orderData,
-        status: "pending", 
+        status: "pending",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+
+        // ✅ NOVO:
+        dateKey,
+        dailyNumber,
+        displayNumber,
       });
+
+      // uvećaj brojač za taj dan
+      tx.set(
+        counterRef,
+        {
+          nextNumber: next + 1,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
 
     // 2️⃣ Uzimanje admin push tokena
     const adminDoc = await admin.firestore().doc("settings/Admin").get();
@@ -219,11 +266,13 @@ app.post("/create-order", async (req, res) => {
           token: adminToken,
           orderId: docRef.id,
           total: orderData.total,
+          // opciono: pošalji i lep broj adminu
+          displayNumber,
         }),
       }).catch(() => {});
     }
 
-    // 4️⃣ Odgovor klijentu – SAMO ID (kao ranije)
+    // 4️⃣ Odgovor klijentu – SAMO ID (kao ranije, bez update-a app)
     res.json({
       success: true,
       orderId: docRef.id,
@@ -233,7 +282,6 @@ app.post("/create-order", async (req, res) => {
     res.status(500).json({ error: "Order creation failed" });
   }
 });
-
 
 
     /**
@@ -294,33 +342,7 @@ app.get("/order/:id", async (req, res) => {
 });
 
 
-/**
- * ============================
- * PRACENJE PORUDZBINE - KLIJENT
- * ============================
- */
-app.get("/order/:id", async (req, res) => {
-  try {
-    const snap = await admin
-      .firestore()
-      .collection("orders")
-      .doc(req.params.id)
-      .get();
 
-    if (!snap.exists) {
-      return res.status(404).json({ success: false });
-    }
-
-    const data = snap.data();
-
-    res.json({
-      success: true,
-      order: { id: snap.id, ...data },
-    });
-  } catch {
-    res.status(500).json({ success: false });
-  }
-});
 
 
 
