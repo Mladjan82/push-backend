@@ -225,7 +225,7 @@ app.post("/create-order", async (req, res) => {
 
       const next = counterSnap.exists ? (counterSnap.data().nextNumber || 0) : 0;
 
-      dailyNumber = next; // broji od 0
+      dailyNumber = next+1; // broji od 1
       displayNumber = `${dateKey}-${pad3(dailyNumber)}`; // npr "2026-02-25-007"
 
       // pravimo novi order doc sa auto-id (ali kontrolisano)
